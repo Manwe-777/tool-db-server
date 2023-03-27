@@ -6,3 +6,4 @@ test
 tooldb
 dist
 ssl/**
+*.json

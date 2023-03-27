@@ -1,17 +1,22 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { ToolDb, toolDbWebrtc } from "tool-db";
-import wrtc from "wrtc";
+import { ToolDb } from "tool-db";
+
+import ToolDbEcdsaUser from "@tool-db/ecdsa-user";
+import ToolDbHybrid from "@tool-db/hybrid-network";
+
 import dotenv from "dotenv";
 import publicIp from "public-ip";
-import fs from "fs";
+
 import http from "http";
-import https from "https";
 
 dotenv.config();
 
-import { USE_HTTP, PORT, SWARM_KEY } from "./constants";
+// This is a bad solution but will help connecting to basically any peer
+(process as any).env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+
+import { USE_HTTP, PORT } from "./constants";
 import expressSetup from "./expressSetup";
 
 dotenv.config();
@@ -41,7 +46,7 @@ app.use(
   })
 );
 
-export default async function webrtcServer() {
+export default async function startServer() {
   console.log("USE_HTTP ", USE_HTTP);
   console.log("PORT ", PORT);
   publicIp.v4().then((currentIp) => {
@@ -49,32 +54,25 @@ export default async function webrtcServer() {
     console.log("Server IP: ", currentIp);
 
     var httpServer;
-    var httpsServer;
-
-    if (USE_HTTP) {
-      httpServer = http.createServer(app);
-      httpServer.listen(80);
-    }
-
-    if (PORT === 443) {
-      var privateKey = fs.readFileSync("ssl/server.key", "utf8");
-      var certificate = fs.readFileSync("ssl/server.crt", "utf8");
-      var credentials = { key: privateKey, cert: certificate };
-      httpsServer = https.createServer(credentials, app);
-      httpsServer.listen(443);
-    }
+    httpServer = http.createServer(app);
+    httpServer.listen(80);
 
     const toolDb = new ToolDb({
-      peers: [],
+      serverName: "manuel-server",
+      httpServer: undefined,
       server: true,
       debug: true,
-      topic: SWARM_KEY,
-      wrtc: wrtc,
-      networkAdapter: toolDbWebrtc,
-    } as any);
+      host: "127.0.0.1",
+      port: PORT,
+      ssl: false,
+      networkAdapter: ToolDbHybrid,
+      userAdapter: ToolDbEcdsaUser,
+    });
 
     // You should be able to provide your own server user or keys!
     toolDb.anonSignIn();
+
+    // Setup Express
     expressSetup(app, toolDb);
   });
 }
