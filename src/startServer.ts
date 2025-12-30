@@ -49,7 +49,7 @@ app.use(
 export default async function startServer() {
   console.log("USE_HTTP ", USE_HTTP);
   console.log("PORT ", PORT);
-  publicIp.v4().then((currentIp) => {
+  publicIp.v4().then(async (currentIp) => {
     console.log(new Date().toUTCString());
     console.log("Server IP: ", currentIp);
 
@@ -67,6 +67,11 @@ export default async function startServer() {
       ssl: false,
       networkAdapter: ToolDbHybrid,
       userAdapter: ToolDbEcdsaUser,
+    });
+
+    toolDb.on("init", (id) => {
+      console.log("Server started");
+      console.log("Public Key: ", id);
     });
 
     // You should be able to provide your own server user or keys!
